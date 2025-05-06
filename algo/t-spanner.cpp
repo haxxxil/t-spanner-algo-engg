@@ -13,6 +13,14 @@ struct edge
     // status 2 -> in spanner
 };
 
+// Timer macros
+#define TIMER_START(name) auto timer_##name##_start = std::chrono::high_resolution_clock::now()
+#define TIMER_END(name) auto timer_##name##_end = std::chrono::high_resolution_clock::now()
+#define TIMER_PRINT(name) cerr << \
+    std::chrono::duration_cast<std::chrono::milliseconds>( \
+    timer_##name##_end - timer_##name##_start).count() << endl
+
+
 vector<vector<edge>> adj(0);
 
 mt19937_64 RNG(chrono::steady_clock::now().time_since_epoch().count());
@@ -31,7 +39,7 @@ bool sample(int n, int k)
 
 signed main()
 {
-    freopen("debug.log", "w", stderr);
+    // freopen("debug.log", "w", stderr);
 
     ios::sync_with_stdio(0);
     cin.tie(0);
@@ -56,6 +64,8 @@ signed main()
         adj[u].push_back(eu);
     }
 
+    TIMER_START(total);
+
     vector<int> cluster(n, 0);
     vector<int> is_center(n, 0);
     vector<int> centers(0);
@@ -68,6 +78,7 @@ signed main()
     }
 
     // phase 1
+    TIMER_START(phase1);
     for(int i=1; i<k; i++)
     {
         // step 1
@@ -83,13 +94,13 @@ signed main()
             }
         }
         if(!cc) is_center[centers[0]] = 1;
-        cerr<<cc<<"\n";
-        cerr<<"centers: ";
-        for(int i=0; i<n; i++)
-        {
-            if(is_center[i]) cerr<<i<<" ";
-        }
-        cerr<<"\n";
+        // cerr<<cc<<"\n";
+        // cerr<<"centers: ";
+        // for(int i=0; i<n; i++)
+        // {
+        //     if(is_center[i]) cerr<<i<<" ";
+        // }
+        // cerr<<"\n";
 
         // step 2
         vector<int> min_idx(n, -1); 
@@ -239,19 +250,21 @@ signed main()
         }
     }
 
-    cerr<<"After ph1:\n";
-    for(int i=0; i<n; i++)
-    {
-        for(auto j: adj[i])
-        {
-            if(j.s==2)
-            {
-                cerr<<i<<" "<<j.v<<" "<<j.w<<"\n";
-            }
-        }
-    }
+    TIMER_END(phase1);
 
+    // cerr<<"After ph1:\n";
+    // for(int i=0; i<n; i++)
+    // {
+    //     for(auto j: adj[i])
+    //     {
+    //         if(j.s==2)
+    //         {
+    //             cerr<<i<<" "<<j.v<<" "<<j.w<<"\n";
+    //         }
+    //     }
+    // }
 
+    TIMER_START(phase2);
     //phase 2
     vector<pair<int, int>> to_add(0);
     vector<pair<int, int>> to_rem(0);
@@ -303,6 +316,7 @@ signed main()
         e.s = 0;
         adj[e.v][e.oi].s = 0;
     }
+    TIMER_END(phase2);
 
     vector<pair<pair<int, int>, int>> fin(0);
     for(int i=0; i<n; i++)
@@ -315,7 +329,10 @@ signed main()
             fin.push_back({{i, e.v}, e.w});
         }
     }
-
+    TIMER_END(total);
+    TIMER_PRINT(phase1);
+    TIMER_PRINT(phase2);
+    TIMER_PRINT(total);
 
     cout<<n<<" "<<fin.size()<<"\n";
     for(auto e: fin)
