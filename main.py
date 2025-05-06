@@ -74,6 +74,32 @@ def run_t_spanner(input_graph):
     
     return result.stdout
 
+def run_t_spanner_with_timing(input_graph):
+    """Run t-spanner algorithm and return output and timing information."""
+    with tempfile.NamedTemporaryFile(mode='w+', delete=False) as tmp:
+        tmp.write(input_graph)
+        tmp_name = tmp.name
+
+    result = subprocess.run(
+        ["./t_spanner_exec"],
+        input=input_graph,
+        capture_output=True,
+        text=True
+    )
+    
+    # Extract timing information from stderr
+    timing_info = {}
+    stderr_lines = result.stderr.strip().split('\n')
+    if len(stderr_lines) >= 3:  # Expecting phase1, phase2, and total timings
+        try:
+            timing_info['phase1'] = int(stderr_lines[0])
+            timing_info['phase2'] = int(stderr_lines[1])
+            timing_info['total'] = int(stderr_lines[2])
+        except (ValueError, IndexError):
+            pass
+    
+    return result.stdout, timing_info
+
 def run_checker(original_graph, spanner_output):
     """Run the checker to verify if the spanner is valid."""
     combined_input = original_graph + spanner_output
@@ -136,6 +162,33 @@ def plot_edge_comparison(n_values, original_m_values, spanner_m_values, t):
     print(f"Plot saved to '{filename}'")
     plt.show()
 
+def plot_time_comparison(n_values, time_values_by_t, title):
+    """Plot a comparison of time taken for different t values."""
+    plt.figure(figsize=(12, 7))
+    
+    for t, time_data in time_values_by_t.items():
+        plt.plot(n_values, time_data, marker='o', linewidth=2, label=f't={t}')
+    
+    plt.xlabel('Number of Vertices (n)')
+    plt.ylabel('Time (milliseconds)')
+    plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    
+    # Use log scale if values span multiple orders of magnitude
+    if max(max(times) for times in time_values_by_t.values()) > 1000:
+        plt.yscale('log')
+    
+    # Create plots directory if it doesn't exist
+    os.makedirs('plots', exist_ok=True)
+    
+    # Generate filename based on title
+    safe_title = title.lower().replace(' ', '_')
+    filename = f'plots/{safe_title}.png'
+    plt.savefig(filename)
+    print(f"Plot saved to '{filename}'")
+    plt.show()
+
 def main():
     parser = argparse.ArgumentParser(description="T-Spanner Test Framework")
     parser.add_argument("--test_cases", type=int, nargs="?", default=1, help="Number of test cases to run per n value")
@@ -156,6 +209,9 @@ def main():
     parser.add_argument("--plot_min_w", type=int, default=1, help="Minimum edge weight for weight comparison plot")
     parser.add_argument("--plot_max_w", type=int, default=100, help="Maximum edge weight for weight comparison plot")
     parser.add_argument("--t_values", type=int, nargs="*", help="List of t values for weight comparison plot")
+    
+    # Add time analysis option
+    parser.add_argument("--plot_time", action="store_true", help="Generate time analysis plot")
     
     args = parser.parse_args()
 
@@ -318,6 +374,88 @@ def main():
             plot_edge_comparison(n_values, original_m_values, spanner_m_values, args.t)
         else:
             print("No data to plot. Try different parameters or check for errors ")        
+    
+    elif args.plot_time:
+        # Generate a sequence of n values
+        n_values = [int(n) for n in np.linspace(args.min_n, args.max_n, args.steps)]
+        
+        # Use provided t_values or default
+        t_values = args.t_values if args.t_values else [3, 5, 7]
+        
+        # Dictionary to store timing data for each t value
+        phase1_times = {t: [] for t in t_values}
+        phase2_times = {t: [] for t in t_values}
+        total_times = {t: [] for t in t_values}
+        
+        for n in n_values:
+            print(f"\nTesting with n={n}")
+            
+            for t in t_values:
+                print(f"  Running with t={t}")
+                
+                # Calculate m based on n if not specified
+                m = args.m if args.m is not None else n * (n - 1) // 2
+                max_w = args.max_w if args.max_w is not None else n
+                
+                # Run multiple test cases and average the times
+                phase1_time_sum = 0
+                phase2_time_sum = 0
+                total_time_sum = 0
+                valid_runs = 0
+                
+                for i in range(args.test_cases):
+                    # Generate graph and run algorithm with timing
+                    original_graph = run_generator(n, m, t, max_w)
+                    if not original_graph:
+                        continue
+                    
+                    spanner_output, timing_info = run_t_spanner_with_timing(original_graph)
+                    if not spanner_output or not timing_info:
+                        continue
+                    
+                    if all(key in timing_info for key in ['phase1', 'phase2', 'total']):
+                        phase1_time_sum += timing_info['phase1']
+                        phase2_time_sum += timing_info['phase2']
+                        total_time_sum += timing_info['total']
+                        valid_runs += 1
+                        
+                        if args.verbose:
+                            print(f"    Run {i+1}: Phase1={timing_info['phase1']}ms, "
+                                  f"Phase2={timing_info['phase2']}ms, "
+                                  f"Total={timing_info['total']}ms")
+                
+                # Calculate averages if we have valid runs
+                if valid_runs > 0:
+                    avg_phase1 = phase1_time_sum / valid_runs
+                    avg_phase2 = phase2_time_sum / valid_runs
+                    avg_total = total_time_sum / valid_runs
+                    
+                    phase1_times[t].append(avg_phase1)
+                    phase2_times[t].append(avg_phase2)
+                    total_times[t].append(avg_total)
+                    
+                    print(f"    Average times for t={t}: Phase1={avg_phase1:.1f}ms, "
+                          f"Phase2={avg_phase2:.1f}ms, Total={avg_total:.1f}ms")
+                else:
+                    print(f"    No valid timing data for n={n}, t={t}")
+                    # Append None or 0 to maintain alignment with n_values
+                    phase1_times[t].append(None)
+                    phase2_times[t].append(None)
+                    total_times[t].append(None)
+        
+        # Generate plots
+        if any(all(x is not None for x in times) for times in phase1_times.values()):
+            plot_time_comparison(n_values, phase1_times, 
+                               f"T-Spanner Phase 1 Execution Time")
+        
+        if any(all(x is not None for x in times) for times in phase2_times.values()):
+            plot_time_comparison(n_values, phase2_times, 
+                               f"T-Spanner Phase 2 Execution Time")
+        
+        if any(all(x is not None for x in times) for times in total_times.values()):
+            plot_time_comparison(n_values, total_times, 
+                               f"T-Spanner Total Execution Time")
+    
     else:
         if args.m is None:
             args.m = args.n * (args.n - 1) // 2

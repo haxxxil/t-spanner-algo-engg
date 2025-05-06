@@ -17,7 +17,7 @@ struct edge
 #define TIMER_START(name) auto timer_##name##_start = std::chrono::high_resolution_clock::now()
 #define TIMER_END(name) auto timer_##name##_end = std::chrono::high_resolution_clock::now()
 #define TIMER_PRINT(name) cerr << \
-    std::chrono::duration_cast<std::chrono::milliseconds>( \
+    std::chrono::duration_cast<std::chrono::microseconds>( \
     timer_##name##_end - timer_##name##_start).count() << endl
 
 
@@ -40,7 +40,7 @@ bool sample(int n, int k)
 signed main()
 {
     // freopen("debug.log", "w", stderr);
-
+    TIMER_START(tt);
     ios::sync_with_stdio(0);
     cin.tie(0);
 
@@ -330,14 +330,23 @@ signed main()
         }
     }
     TIMER_END(total);
-    TIMER_PRINT(phase1);
-    TIMER_PRINT(phase2);
-    TIMER_PRINT(total);
+    // cerr <<" TIMERS: " << timer_phase1_start.time_since_epoch().count() << " " << timer_phase1_end.time_since_epoch().count() << " " << timer_phase2_start.time_since_epoch().count() << " " << timer_phase2_end.time_since_epoch().count() << " " << timer_total_start.time_since_epoch().count() << " " << timer_total_end.time_since_epoch().count() << "\n";
+    // Calculate time differences in milliseconds
+    auto phase1_ms = std::chrono::duration_cast<std::chrono::microseconds>(timer_phase1_end - timer_phase1_start).count();
+    auto phase2_ms = std::chrono::duration_cast<std::chrono::microseconds>(timer_phase2_end - timer_phase2_start).count();
+    auto total_ms = std::chrono::duration_cast<std::chrono::microseconds>(timer_total_end - timer_total_start).count();
+
+    // Print time taken for each phase
+    cerr << phase1_ms << endl;
+    cerr << phase2_ms << endl;
+    cerr << total_ms << endl;
 
     cout<<n<<" "<<fin.size()<<"\n";
     for(auto e: fin)
     {
         cout<<e.first.first<<" "<<e.first.second<<" "<<e.second<<"\n";
     }
+    TIMER_END(tt);
+    TIMER_PRINT(tt);
     return 0;
 }
