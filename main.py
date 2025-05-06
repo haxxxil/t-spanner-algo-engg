@@ -138,7 +138,7 @@ def plot_edge_comparison(n_values, original_m_values, spanner_m_values, t):
 
 def main():
     parser = argparse.ArgumentParser(description="T-Spanner Test Framework")
-    parser.add_argument("test_cases", type=int, nargs="?", default=1, help="Number of test cases to run per n value")
+    parser.add_argument("--test_cases", type=int, nargs="?", default=1, help="Number of test cases to run per n value")
     parser.add_argument("--n", type=int, default=10, help="Number of vertices (default: 10)")
     parser.add_argument("--m", type=int, default=None, help="Number of edges (default: n^2/2)")
     parser.add_argument("--t", type=int, default=3, help="T parameter for spanner (default: 3)")
@@ -147,11 +147,15 @@ def main():
     
     # Add plot parameters
     parser.add_argument("--plot", action="store_true", help="Generate comparison plot")
+    parser.add_argument("--plot_weights", action="store_true", help="Generate weight comparison plot")
     parser.add_argument("--min_n", type=int, default=10, help="Minimum n value for plotting")
     parser.add_argument("--max_n", type=int, default=100, help="Maximum n value for plotting")
     parser.add_argument("--growth_factor", type=float, default=None, help="Multiply n by this factor for each step")
     parser.add_argument("--addition_factor", type=int, default=None, help="Add this value to n for each step")
     parser.add_argument("--steps", type=int, default=10, help="Number of steps between min_n and max_n (used if neither growth nor addition factor is specified)")
+    parser.add_argument("--plot_min_w", type=int, default=1, help="Minimum edge weight for weight comparison plot")
+    parser.add_argument("--plot_max_w", type=int, default=100, help="Maximum edge weight for weight comparison plot")
+    parser.add_argument("--t_values", type=int, nargs="*", help="List of t values for weight comparison plot")
     
     args = parser.parse_args()
 
@@ -164,7 +168,79 @@ def main():
         print("Failed to compile checker.cpp")
         return
     
-    if args.plot:
+    if args.plot_weights:
+        # Generate a sequence of max_w values
+        w_values = []
+        if args.steps:
+            w_values = [int(w) for w in np.linspace(args.plot_min_w, args.plot_max_w, args.steps)]
+        else:
+            # Default to 10 steps if not specified
+            w_values = [int(w) for w in np.linspace(args.plot_min_w, args.plot_max_w, 10)]
+        
+        t_values = args.t_values if args.t_values else [3, 5, 7]
+        n = args.n
+        
+        plt.figure(figsize=(10, 6))
+        
+        for t in t_values:
+            spanner_edges_by_weight = []
+            
+            for max_w in w_values:
+                print(f"\nTesting with n={n}, t={t}, max_w={max_w}")
+                
+                # For each weight, run multiple test cases and take the average
+                spanner_edges = []
+                
+                for i in range(args.test_cases):
+                    # Calculate m based on n if not specified
+                    m = args.m if args.m is not None else n * (n - 1) // 2
+                    
+                    # Generate graph and run algorithm
+                    original_graph = run_generator(n, m, t, max_w)
+                    if not original_graph:
+                        continue
+                    
+                    spanner_output = run_t_spanner(original_graph)
+                    if not spanner_output:
+                        continue
+                    
+                    # Extract edge count
+                    _, spanner_m = parse_graph_info(spanner_output)
+                    
+                    if spanner_m is not None:
+                        spanner_edges.append(spanner_m)
+                        
+                    # Check if spanner is valid
+                    result = run_checker(original_graph, spanner_output)
+                    is_valid = result == "YES"
+                    print(f"  Test case {i+1}: {'Valid' if is_valid else 'Invalid'} t-spanner")
+                
+                if spanner_edges:
+                    avg_spanner_m = sum(spanner_edges) / len(spanner_edges)
+                    spanner_edges_by_weight.append(avg_spanner_m)
+                    print(f"  Average spanner edges: {avg_spanner_m:.1f}")
+                else:
+                    print(f"  No valid data for max_w={max_w}")
+                    spanner_edges_by_weight.append(None)
+            
+            # Plot the line for this t value
+            plt.plot(w_values, spanner_edges_by_weight, marker='o', label=f't={t}')
+        
+        plt.xlabel('Maximum Edge Weight')
+        plt.ylabel('Number of Edges in t-Spanner')
+        plt.title(f'Effect of Edge Weight on Spanner Size (n={n})')
+        plt.legend()
+        plt.grid(True)
+        
+        # Create plots directory if it doesn't exist
+        os.makedirs('plots', exist_ok=True)
+        
+        filename = f'plots/weight_comparison_n{n}.png'
+        plt.savefig(filename)
+        print(f"Plot saved to '{filename}'")
+        plt.show()
+    
+    elif args.plot:
         # Generate a sequence of n values based on growth or addition factor
         n_values = []
         
