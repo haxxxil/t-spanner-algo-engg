@@ -31,6 +31,8 @@ bool sample(int n, int k)
 
 signed main()
 {
+    freopen("debug.log", "w", stderr);
+
     ios::sync_with_stdio(0);
     cin.tie(0);
 
@@ -81,6 +83,13 @@ signed main()
             }
         }
         if(!cc) is_center[centers[0]] = 1;
+        cerr<<cc<<"\n";
+        cerr<<"centers: ";
+        for(int i=0; i<n; i++)
+        {
+            if(is_center[i]) cerr<<i<<" ";
+        }
+        cerr<<"\n";
 
         // step 2
         vector<int> min_idx(n, -1); 
@@ -152,11 +161,12 @@ signed main()
             {
                 int ncj = cluster[adj[j][min_idx[j]].v];
                 vector<int> min_ed(cidx, -1);
+                vector<int> tr(cidx, 0);
                 for(int k=0; k<adj[j].size(); k++)
                 {
                     auto & e = adj[j][k];
                     if(e.s!=1) continue;
-                    if(!is_center[cluster[e.v]]) to_rem.push_back({j, k});
+                    // if(!is_center[cluster[e.v]]) to_rem.push_back({j, k});
                     if(cluster[e.v]==ncj) to_rem.push_back({j, k});
                     if(center_idx[cluster[e.v]]<0) continue;
                     int ci = center_idx[cluster[e.v]];
@@ -167,6 +177,10 @@ signed main()
                     else if(e.w<adj[j][min_ed[ci]].w)
                     {
                         min_ed[ci] = k;
+                    }
+                    if(e.w<adj[j][min_idx[j]].w && ci!=center_idx[ncj])
+                    {
+                        tr[ci] = 1;
                     }
                 }
                 cluster_change.push_back({j, ncj});
@@ -179,6 +193,13 @@ signed main()
                     to_add.push_back({j, min_ed[k]});
                 }
                 to_add.push_back({j, min_idx[j]});
+                for(int k=0; k<adj[j].size(); k++)
+                {
+                    auto & e = adj[j][k];
+                    if(e.s!=1) continue;
+                    int ci = center_idx[cluster[e.v]];
+                    if(tr[ci]) to_rem.push_back({j, k});
+                }
             }
         }
         for(auto p: to_add)
@@ -215,6 +236,18 @@ signed main()
         for(int j=0; j<n; j++)
         {
             if(is_center[j]) centers.push_back(j);
+        }
+    }
+
+    cerr<<"After ph1:\n";
+    for(int i=0; i<n; i++)
+    {
+        for(auto j: adj[i])
+        {
+            if(j.s==2)
+            {
+                cerr<<i<<" "<<j.v<<" "<<j.w<<"\n";
+            }
         }
     }
 
