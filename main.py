@@ -5,12 +5,15 @@ import sys
 import subprocess
 import argparse
 import tempfile
+import matplotlib.pyplot as plt
+import numpy as np
 
 def compile_cpp(file_path, output_name):
     """Compile C++ file and return the path to the executable."""
     try:
+        compiler = "g++-14" if sys.platform == "darwin" else "g++"
         subprocess.run(
-            ["g++-14", "-std=c++17", "-O2", file_path, "-o", output_name],
+            [compiler, "-std=c++17", "-O2", file_path, "-o", output_name],
             check=True,
             stderr=subprocess.PIPE
         )
@@ -83,27 +86,75 @@ def run_checker(original_graph, spanner_output):
     
     return result.stdout.strip()
 
+def parse_graph_info(graph_str):
+    """Parse the graph string to extract n and m."""
+    if not graph_str:
+        return None, None
+    
+    lines = graph_str.strip().split('\n')
+    if not lines:
+        return None, None
+    
+    try:
+        params = lines[0].split()
+        # if len(params) != 3:
+        #     return None, None
+        
+        n, m = map(int, params[:2])
+        return n, m
+    except (ValueError, IndexError):
+        return None, None
+
+def plot_edge_comparison(n_values, original_m_values, spanner_m_values, t):
+    """Plot a comparison of original and spanner edge counts."""
+    plt.figure(figsize=(10, 6))
+    plt.plot(n_values, original_m_values, 'b-o', label='Original Graph Edges')
+    plt.plot(n_values, spanner_m_values, 'r-o', label='T-Spanner Edges')
+    
+    plt.xlabel('Number of Vertices (n)')
+    plt.ylabel('Number of Edges (m)')
+    plt.title(f'Comparison of Edge Counts between Original Graph and {t}-Spanner')
+    plt.legend()
+    plt.grid(True)
+    
+    # Add annotations for the edge reduction percentage
+    if len(n_values) <= 10:
+        for i in range(len(n_values)):
+            if original_m_values[i] > 0:
+                reduction = 100 * (1 - spanner_m_values[i] / original_m_values[i])
+                plt.annotate(f"{reduction:.1f}%", 
+                            xy=(n_values[i], (original_m_values[i] + spanner_m_values[i])/2),
+                            xytext=(5, 0), 
+                            textcoords='offset points')
+    
+    # Create plots directory if it doesn't exist
+    os.makedirs('plots', exist_ok=True)
+    
+    # Include t in the filename
+    filename = f'plots/edge_comparison_t{t}.png'
+    plt.savefig(filename)
+    print(f"Plot saved to '{filename}'")
+    plt.show()
+
 def main():
     parser = argparse.ArgumentParser(description="T-Spanner Test Framework")
-    parser.add_argument("test_cases", type=int, help="Number of test cases to run")
+    parser.add_argument("test_cases", type=int, nargs="?", default=1, help="Number of test cases to run per n value")
     parser.add_argument("--n", type=int, default=10, help="Number of vertices (default: 10)")
     parser.add_argument("--m", type=int, default=None, help="Number of edges (default: n^2/2)")
     parser.add_argument("--t", type=int, default=3, help="T parameter for spanner (default: 3)")
     parser.add_argument("--max_w", type=int, default=None, help="Maximum edge weight (default: n)")
     parser.add_argument("--verbose", action="store_true", help="Print detailed outputs")
     
+    # Add plot parameters
+    parser.add_argument("--plot", action="store_true", help="Generate comparison plot")
+    parser.add_argument("--min_n", type=int, default=10, help="Minimum n value for plotting")
+    parser.add_argument("--max_n", type=int, default=100, help="Maximum n value for plotting")
+    parser.add_argument("--growth_factor", type=float, default=None, help="Multiply n by this factor for each step")
+    parser.add_argument("--addition_factor", type=int, default=None, help="Add this value to n for each step")
+    parser.add_argument("--steps", type=int, default=10, help="Number of steps between min_n and max_n (used if neither growth nor addition factor is specified)")
+    
     args = parser.parse_args()
 
-    if args.m is None:
-        args.m = args.n * (args.n - 1) // 2
-    if args.max_w is None:
-        args.max_w = args.n
-    if args.m > args.n * (args.n - 1) // 2:
-        print(f"Warning: m exceeds maximum possible edges. Setting m to {args.n * (args.n - 1) // 2}.")
-        args.m = args.n * (args.n - 1) // 2
-    if args.verbose:
-        print(f"Test parameters: n={args.n}, m={args.m}, t={args.t}, max_w={args.max_w}")
-    
     # Compile the C++ executables
     if not compile_cpp("algo/t-spanner.cpp", "t_spanner_exec"):
         print("Failed to compile t-spanner.cpp")
@@ -113,38 +164,127 @@ def main():
         print("Failed to compile checker.cpp")
         return
     
-    print(f"Running {args.test_cases} test cases with n={args.n}, t={args.t}")
-    
-    successful_cases = 0
-    for i in range(args.test_cases):
-        print(f"\nTest case {i+1}/{args.test_cases}:")
+    if args.plot:
+        # Generate a sequence of n values based on growth or addition factor
+        n_values = []
         
-        # Generate random graph
-        original_graph = run_generator(args.n, args.m, args.t, args.max_w)
-        if args.verbose:
-            print("Original graph:")
-            print(original_graph)
-        
-        # Run t-spanner algorithm
-        spanner_output = run_t_spanner(original_graph)
-        if args.verbose:
-            print("T-spanner output:")
-            print(spanner_output)
-        
-        # Verify using checker
-        result = run_checker(original_graph, spanner_output)
-        is_valid = result == "YES"
-        
-        if is_valid:
-            successful_cases += 1
-            print(f"✅ Test case {i+1}: Valid t-spanner")
+        if args.growth_factor is not None and args.addition_factor is not None:
+            print("Warning: Both growth_factor and addition_factor provided. Using growth_factor.")
+            n = args.min_n
+            while n <= args.max_n:
+                n_values.append(int(n))
+                n *= args.growth_factor
+        elif args.growth_factor is not None:
+            # Geometric progression
+            n = args.min_n
+            while n <= args.max_n:
+                n_values.append(int(n))
+                n *= args.growth_factor
+        elif args.addition_factor is not None:
+            # Arithmetic progression
+            n = args.min_n
+            while n <= args.max_n:
+                n_values.append(int(n))
+                n += args.addition_factor
         else:
-            print(f"❌ Test case {i+1}: Invalid t-spanner")
+            # Linear spacing between min_n and max_n
+            n_values = [int(n) for n in np.linspace(args.min_n, args.max_n, args.steps)]
         
+        original_m_values = []
+        spanner_m_values = []
+        
+        for n in n_values:
+            print(f"\nTesting with n={n}")
+            
+            # For each n, run multiple test cases and take the average
+            orig_edges = []
+            spanner_edges = []
+            
+            for i in range(args.test_cases):
+                # Calculate m based on n if not specified
+                m = args.m if args.m is not None else n * (n - 1) // 2
+                max_w = args.max_w if args.max_w is not None else n
+                
+                # Generate graph and run algorithm
+                original_graph = run_generator(n, m, args.t, max_w)
+                if not original_graph:
+                    continue
+                
+                spanner_output = run_t_spanner(original_graph)
+                if not spanner_output:
+                    continue
+                
+                # Extract edge counts
+                _, orig_m = parse_graph_info(original_graph)
+                _, spanner_m = parse_graph_info(spanner_output)
+                
+                if orig_m is not None and spanner_m is not None:
+                    orig_edges.append(orig_m)
+                    spanner_edges.append(spanner_m)
+                    
+                # Check if spanner is valid
+                result = run_checker(original_graph, spanner_output)
+                is_valid = result == "YES"
+                print(f"  Test case {i+1}: {'Valid' if is_valid else 'Invalid'} t-spanner")
+                
+            if orig_edges and spanner_edges:
+                avg_orig_m = sum(orig_edges) / len(orig_edges)
+                avg_spanner_m = sum(spanner_edges) / len(spanner_edges)
+                
+                original_m_values.append(avg_orig_m)
+                spanner_m_values.append(avg_spanner_m)
+                
+                print(f"  Average edges - Original: {avg_orig_m:.1f}, T-Spanner: {avg_spanner_m:.1f}")
+            else:
+                print(f"  No valid data for n={n}")
+        
+        if original_m_values and spanner_m_values:
+            plot_edge_comparison(n_values, original_m_values, spanner_m_values, args.t)
+        else:
+            print("No data to plot. Try different parameters or check for errors ")        
+    else:
+        if args.m is None:
+            args.m = args.n * (args.n - 1) // 2
+        if args.max_w is None:
+            args.max_w = args.n
+        if args.m > args.n * (args.n - 1) // 2:
+            print(f"Warning: m exceeds maximum possible edges. Setting m to {args.n * (args.n - 1) // 2}.")
+            args.m = args.n * (args.n - 1) // 2
         if args.verbose:
-            print(f"Checker output: {result}")
-    
-    print(f"\nSummary: {successful_cases}/{args.test_cases} valid t-spanners")
+            print(f"Test parameters: n={args.n}, m={args.m}, t={args.t}, max_w={args.max_w}")
+        
+        print(f"Running {args.test_cases} test cases with n={args.n}, t={args.t}")
+        
+        successful_cases = 0
+        for i in range(args.test_cases):
+            print(f"\nTest case {i+1}/{args.test_cases}:")
+            
+            # Generate random graph
+            original_graph = run_generator(args.n, args.m, args.t, args.max_w)
+            if args.verbose:
+                print("Original graph:")
+                print(original_graph)
+            
+            # Run t-spanner algorithm
+            spanner_output = run_t_spanner(original_graph)
+            if args.verbose:
+                print("T-spanner output:")
+                print(spanner_output)
+            
+            # Verify using checker
+            result = run_checker(original_graph, spanner_output)
+            is_valid = result == "YES"
+            
+            if is_valid:
+                successful_cases += 1
+                print(f"✅ Test case {i+1}: Valid t-spanner")
+            else:
+                print(f"❌ Test case {i+1}: Invalid t-spanner")
+            
+            if args.verbose:
+                print(f"Checker output: {result}")
+        
+        print(f"\nSummary: {successful_cases}/{args.test_cases} valid t-spanners")
 
 if __name__ == "__main__":
     main()
