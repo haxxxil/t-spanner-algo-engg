@@ -24,9 +24,37 @@ def run_generator(n, m, t, max_w=None):
     cmd = ["python3", "generator.py", str(n), str(m), str(t)]
     if max_w is not None:
         cmd.append(str(max_w))
-    
+
     result = subprocess.run(cmd, capture_output=True, text=True)
-    return result.stdout
+    # Check if the output is empty or invalid
+    output = result.stdout
+    if not output.strip():
+        print("Warning: Generator produced empty output!")
+        return None
+    
+    # Verify the output contains valid graph data
+    lines = output.strip().split('\n')
+    if len(lines) < 1:
+        print("Warning: Generator output has insufficient lines!")
+        return None
+    
+    try:
+        # Check if first line has the format "n m t"
+        params = lines[0].split()
+        if len(params) != 3:
+            print(f"Warning: Invalid first line format: {lines[0]}")
+            return None
+            
+        n_out, m_out, t_out = map(int, params)
+        
+        # Check if we have enough edge lines
+        if len(lines) != m_out + 1:
+            print(f"Warning: Expected {m_out + 1} lines, got {len(lines)}")
+    except ValueError:
+        print(f"Warning: Invalid number format in generator output")
+        return None
+    
+    return output
 
 def run_t_spanner(input_graph):
     """Run t-spanner algorithm on the input graph and return the output."""
@@ -65,6 +93,16 @@ def main():
     parser.add_argument("--verbose", action="store_true", help="Print detailed outputs")
     
     args = parser.parse_args()
+
+    if args.m is None:
+        args.m = args.n * (args.n - 1) // 2
+    if args.max_w is None:
+        args.max_w = args.n
+    if args.m > args.n * (args.n - 1) // 2:
+        print(f"Warning: m exceeds maximum possible edges. Setting m to {args.n * (args.n - 1) // 2}.")
+        args.m = args.n * (args.n - 1) // 2
+    if args.verbose:
+        print(f"Test parameters: n={args.n}, m={args.m}, t={args.t}, max_w={args.max_w}")
     
     # Compile the C++ executables
     if not compile_cpp("algo/t-spanner.cpp", "t_spanner_exec"):
