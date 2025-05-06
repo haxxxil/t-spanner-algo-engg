@@ -29,7 +29,7 @@ bool sample(int n, int k)
     return vl<=sp;
 }
 
-void main()
+int main()
 {
     ios::sync_with_stdio(0);
     cin.tie(0);
@@ -60,6 +60,10 @@ void main()
     vector<int> ivd(n, 1);
     // fill(ivd.begin(), ivd.end(), 1);
     iota(cluster.begin(), cluster.end(), 0);
+    for(int i=0; i<n; i++)
+    {
+        centers.push_back(i);
+    }
 
     // phase 1
     for(int i=1; i<k; i++)
@@ -285,4 +289,6 @@ void main()
     {
         cout<<e.first.first<<" "<<e.first.second<<" "<<e.second<<"\n";
     }
+
+    return 0;
 }
