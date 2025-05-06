@@ -33,8 +33,10 @@ bool verify(const vector<vector<int>> &dist1, const vector<vector<int>> &dist2, 
     int n = dist1.size();
     for (int i = 0; i < n; ++i)
         for (int j = 0; j < n; ++j)
-            if (dist2[i][j] > dist1[i][j] * threshold)
+            if (dist2[i][j] > dist1[i][j] * threshold) {
+                cerr << "i j dist1[i][j] dist2[i][j] " << i << " " << j << " " << dist1[i][j] << " " << dist2[i][j] << '\n';
                 return false;
+            }
     return true;
 }
 
@@ -53,6 +55,7 @@ void solve(int tc) {
     vector<vector<int>> dist1 = distances_fw(n, adj1);
     int m_2;
     cin >> n >> m_2;
+    cerr << n << " " << m_o << " " << m_2 << " " << threshold << '\n';
     for (int i = 0; i < m_2; ++i) {
         int u, v, w;
         cin >> u >> v >> w;
