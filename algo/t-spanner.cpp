@@ -267,14 +267,22 @@ void main()
         adj[e.v][e.oi].s = 0;
     }
 
-    cout<<n<<" "<<m<<"\n";
+    vector<pair<pair<int, int>, int>> fin(0);
     for(int i=0; i<n; i++)
     {
         for(auto & e: adj[i])
         {
             if(e.v<i) continue;
             if(e.s<2) continue;
-            cout<<i<<" "<<e.v<<" "<<e.w<<"\n";
+            // cout<<i<<" "<<e.v<<" "<<e.w<<"\n";
+            fin.push_back({{i, e.v}, e.w});
         }
+    }
+
+
+    cout<<n<<" "<<fin.size()<<"\n";
+    for(auto e: fin)
+    {
+        cout<<e.first.first<<" "<<e.first.second<<" "<<e.second<<"\n";
     }
 }
