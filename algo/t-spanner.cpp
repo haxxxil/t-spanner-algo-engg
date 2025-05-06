@@ -29,7 +29,7 @@ bool sample(int n, int k)
     return vl<=sp;
 }
 
-int main()
+signed main()
 {
     ios::sync_with_stdio(0);
     cin.tie(0);
@@ -289,6 +289,5 @@ int main()
     {
         cout<<e.first.first<<" "<<e.first.second<<" "<<e.second<<"\n";
     }
-
     return 0;
 }
