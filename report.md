@@ -79,6 +79,50 @@ Key readings: Sections 2, 3, 4.3, and 5.3 of [randstruc.pdf] (Baswana & Sen).
 
 ### 7.3 Running Tests
 
+Below are the visualizations of the experimental results:
+
+#### Edge Count Comparison
+- **t = 3**  
+  ![Edge Comparison for t=3](plots/edge_comparison_t3.png)
+- **t = 5**  
+  ![Edge Comparison for t=5](plots/edge_comparison_t5.png)
+- **t = 7**  
+  ![Edge Comparison for t=7](plots/edge_comparison_t7.png)
+
+#### Execution Time Analysis
+- **Phase 1 Execution Time**  
+  ![Phase 1 Execution Time](plots/t-spanner_phase_1_execution_time.png)
+- **Phase 2 Execution Time**  
+  ![Phase 2 Execution Time](plots/t-spanner_phase_2_execution_time.png)
+- **Total Execution Time**  
+  ![Total Execution Time](plots/t-spanner_total_execution_time.png)
+
+#### Weight Comparison
+- **Weight Comparison for n=500**  
+  ![Weight Comparison for n=500](plots/weight_comparison_n500.png)
+
+Below are the visualizations of the experimental results:
+
+#### Edge Count Comparison
+- **t = 3**  
+  ![Edge Comparison for t=3](edge_comparison_t3.png)
+- **t = 5**  
+  ![Edge Comparison for t=5](edge_comparison_t5.png)
+- **t = 7**  
+  ![Edge Comparison for t=7](edge_comparison_t7.png)
+
+#### Execution Time Analysis
+- **Phase 1 Execution Time**  
+  ![Phase 1 Execution Time](t-spanner_phase_1_execution_time.png)
+- **Phase 2 Execution Time**  
+  ![Phase 2 Execution Time](t-spanner_phase_2_execution_time.png)
+- **Total Execution Time**  
+  ![Total Execution Time](t-spanner_total_execution_time.png)
+
+#### Weight Comparison
+- **Weight Comparison for n=500**  
+  ![Weight Comparison for n=500](weight_comparison_n500.png)
+
 Use the following command to view the test suite:
 `python main.py -h`
 
