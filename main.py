@@ -170,7 +170,7 @@ def plot_time_comparison(n_values, time_values_by_t, title):
         plt.plot(n_values, time_data, marker='o', linewidth=2, label=f't={t}')
     
     plt.xlabel('Number of Vertices (n)')
-    plt.ylabel('Time (milliseconds)')
+    plt.ylabel('Time (microseconds)')
     plt.title(title)
     plt.legend()
     plt.grid(True)
@@ -420,9 +420,9 @@ def main():
                         valid_runs += 1
                         
                         if args.verbose:
-                            print(f"    Run {i+1}: Phase1={timing_info['phase1']}ms, "
-                                  f"Phase2={timing_info['phase2']}ms, "
-                                  f"Total={timing_info['total']}ms")
+                            print(f"    Run {i+1}: Phase1={timing_info['phase1']}μs, "
+                                  f"Phase2={timing_info['phase2']}μs, "
+                                  f"Total={timing_info['total']}μs")
                 
                 # Calculate averages if we have valid runs
                 if valid_runs > 0:
@@ -434,8 +434,8 @@ def main():
                     phase2_times[t].append(avg_phase2)
                     total_times[t].append(avg_total)
                     
-                    print(f"    Average times for t={t}: Phase1={avg_phase1:.1f}ms, "
-                          f"Phase2={avg_phase2:.1f}ms, Total={avg_total:.1f}ms")
+                    print(f"    Average times for t={t}: Phase1={avg_phase1:.1f}μs, "
+                          f"Phase2={avg_phase2:.1f}μs, Total={avg_total:.1f}μs")
                 else:
                     print(f"    No valid timing data for n={n}, t={t}")
                     # Append None or 0 to maintain alignment with n_values
